@@ -1,4 +1,4 @@
-// mix, wersja 0.3
+// mix, wersja 0.4
 // (c) 1998, 1999 wojtek kaniewski <wojtekka@dione.ids.pl>
 
 wstêp
@@ -7,22 +7,17 @@ wstêp
   dlatego, ¿e nie znalaz³em miksera, który mi siê podoba³ :)
 
 wymagania
-  - linux 2.x ze sterownikiem karty d¼wiêkowej wkompilowanym w j±dro systemu
-    lub w postaci modu³u,
+  - linux 2.x ze sterownikiem karty d¼wiêkowej zgodnym z OSS,
   - biblioteka slang,
   - odpowiednie pliki nag³ówkowe,
   - kompilator jêzyka C.
 
 kompilacja i instalacja
-  aby poprawnie skompilowaæ program nale¿y uruchomiæ skrypt ./configure,
-  który sprawdzi, czy system jest w stanie sprostaæ kompilacji programu :)
-  stworzy on równie¿ pliki niezbêdne do dalszych dzia³añ.
-
-  nastêpnie nale¿y wpisaæ polecenie ,,make'', które uruchomi kompilator
+  wystarczy uruchomiæ polecenie ,,make'', które uruchomi kompilator
   z odpowiednimi opcjami. po poprawnej kompilacji (tzn. je¶li nie pojawi³y
   siê komunikaty o b³êdzie), aby zainstalowaæ program w systemie, nale¿y
-  wydaæ polecenie ,,make install'', które skopiuje program i instrukcjê
-  obs³ugi w odpowienie miejsce.
+  wydaæ polecenie ,,make install'', które skopiuje program w odpowienie
+  miejsce.
 
 obs³uga programu
   jest bajecznie prosta. po uruchomieniu programu pokazuje siê ma³y suwak
@@ -32,19 +27,37 @@ obs³uga programu
   uzyskaæ wciskaj±c klawisz ']'. wciskaj±c kursory w górê i w dó³ mo¿na
   poruszaæ siê miêdzy ró¿nymi ustawieniami karty d¼wiêkowej, jak g³o¶no¶æ
   syntezatora midi, wej¶cia liniowego czy odtwarzacza CD. by zatwierdziæ
-  zmiany i zakoñczyæ program nale¿y wcisn±æ klawisz ENTER.
+  zmiany i zakoñczyæ program nale¿y wcisn±æ klawisz ENTER. by wyj¶æ z programu
+  nie zachowuj±c zmian nale¿y dwukrotnie wcisn±æ klawisz ESC.
+
+parametry programu
+  -d, --device=URZ¡DZENIE
+      okre¶la z którego urz±dzenia miksera program ma korzystaæ. domy¶lnym
+      jest /dev/mixer.
+  -m, --mini
+      uruchamia program w trybie jednolinijkowym (tak jak wersja wcze¶niejsze
+      ni¿ 0.3).
+  --version
+      pokazuje wersjê programu.
+  --help
+      wy¶wietla listê dostêpnych opcji.
+
+po polsku?
+  program wy¶wietla wszystkie komunikaty po polsku tylko wtedy, kiedy zmienna
+  systemowa LANG zawiera tekst rozpoczynaj±cy siê od 'pl'. w przeciwnym
+  wypadku teksty bêd± w jêzyku angielskim. program bêdzie pewnie obs³ugiwa³
+  wiêksz± ilo¶æ jêzyków jak tylko opanujê u¿ywanie locali :>
 
 kod ¼ród³owy
-  program jest wynikiem godzinnej pracy z edytorem, ¼ród³em programu
-  aumix oraz zawarto¶ci± katalogów /usr/doc i /usr/include. bardzo mo¿liwe
-  jest, ¿e co¶ nie wygl±da tak jak powinno, lecz program dzia³a bez zarzutu
-  na kilku maszynach i jest zbyt prosty, by móg³ staæ siê kopalni± b³êdów.
+  pierwsza wersja programu by³a wynikiem godzinnej pracy z edytorem, ¼ród³em
+  aumix'a oraz zawarto¶ci± katalogów /usr/doc i /usr/include. kolejne wersje
+  s± tylko mniej lub bardziej udanymi protezami ;)
 
 znane b³êdy i niedogodno¶ci
-  - nie mo¿na wyj¶æ z programu bez zachowania ustawieñ g³o¶no¶ci,
   - na kartach z nieliniow± regulacj± g³o¶no¶ci (np. gravis ultrasound)
     regulacja jest faktycznie nieliniowa ;)
-  - ma³a skala regulacji nie pozwala na p³ynne "dostrajanie".
+  - ma³a skala regulacji nie pozwala na p³ynne "dostrajanie",
+  - brak mo¿liwo¶ci regulacji balansu i wyboru ¼ród³a nagrywania.
   
 licencja
   program jest rozprowadzany na zasadach okre¶lonych w Licencji GNU,
