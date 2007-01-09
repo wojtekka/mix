@@ -1,6 +1,6 @@
 CC = gcc -O2 -Wall
 LIB = -lslang -I/usr/include/slang -I/usr/local/include
-DIR = $(ROOT)/usr/bin
+DIR = $(ROOT_DIR)/usr/bin
 
 all:
 	$(CC) mix.c -o mix $(LIB)

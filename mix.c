@@ -1,6 +1,6 @@
 /*
-  mix, wersja 0.51
-  (c) 1998, 1999 wojtek kaniewski <wojtekka@dione.ids.pl>
+  mix, wersja 0.6
+  (c) 1998, 1999 wojtek kaniewski <wojtekka@irc.pl>
   
   fixy: marcin kamiñski <maxiu@px.pl>
 
@@ -26,7 +26,6 @@
 #include <getopt.h>
 #include <string.h>
 #include <signal.h>
-#include <ctype.h>
 #include "slang.h"
 
 #include <sys/ioctl.h>
@@ -37,26 +36,19 @@
 #define DEVICES SOUND_MIXER_NRDEVICES
 
 #ifndef MINI
-#  define VERSION "mix-0.51"
+#  define VERSION "mix-0.6"
 #else
-#  define VERSION "mix-0.51-mini"
+#  define VERSION "mix-0.6-mini"
 #endif
 
-#define UP "\033[%dA"
-#define DOWN "\033[%dB"
-#define RIGHT "\033[%dC"
-#define LEFT "\033[%dD"
-#define NORMAL "\033[0m"
-#define BOLD "\033[1m"
+#define COPYRITE "(c) 1998, 1999 by wojtek kaniewski (wojtekka@irc.pl)"
 
-#define slprintf(x...) { snprintf(pftmp, 255, x); \
-  SLtt_write_string(pftmp); SLtt_flush_output(); }
-  
 /* deklarujemy co trzeba */
-void merror(char *msg);
+void merror(char *format, ...);
 void usage(char *argv0);
+void slprintf(char *format, ...);
 void finish();
-char pftmp[256];
+
 int mixfd, ile = 0, dev = 0, pl;
 mixer_info minfo;
 #ifndef MINI
@@ -69,89 +61,25 @@ static struct option const longopts[] = {
   { "help", no_argument, 0, 'h' },
   { "version", no_argument, 0, 'v' },
   { "device", required_argument, 0, 'd' },
-#ifndef MINI
   { "mini", no_argument, 0, 'm' },
-#else
   { "big", no_argument, 0, 'b' },
-#endif
   { 0, 0, 0, 0 }
 };
-
-struct scrn {
-	char lines, cols, x, y;
-};
-
-struct scrn *console_save = NULL;
-char *vcs_path = NULL;
-
-void dump_console()
-{
-	char *tty = ttyname(0);
-	int fd;
-
-	if (!tty)
-		return;
-	if (strcmp(tty, "/dev/tty") || !isdigit(tty[8]))
-		return;
-	vcs_path = strdup(tty);
-	vcs_path[5] = 'v';
-	vcs_path[6] = 'c';
-	vcs_path[7] = 's';
-
-	if (!(console_save = malloc(sizeof(struct scrn)))) {
-		free(vcs_path);
-		return;
-	}
-	
-	if ((fd = open(vcs_path, O_RDWR)) == -1) {
-		free(console_save);
-		free(vcs_path);
-		console_save = NULL;
-		return;
-	}
-
-	read(fd, console_save, sizeof(struct scrn));
-
-	if (!(console_save = realloc(console_save, sizeof(struct scrn) + 2 * console_save->lines * console_save->cols))) {
-		close(fd);
-		free(vcs_path);
-		return;
-	}
-
-	read(fd, console_save + sizeof(struct scrn), 2 * console_save->lines * console_save->cols);
-	close(fd);
-}
-
-void restore_console()
-{
-	int fd;
-
-	if (!console_save || !vcs_path)
-		return;
-
-	if ((fd = open(vcs_path, O_RDWR)) == -1)
-		return;
-
-	write(fd, console_save,  sizeof(struct scrn) + 2 * console_save->lines * console_save->cols);
-	close(fd);
-	free(console_save);
-	free(vcs_path);
-}
 
 /* i wziuuum... do dzie³a :) */
 int main(int argc, char **argv) {
   int x, tmp, ch, update = 0, finito = 0, optc;
   int oldvol[DEVICES], vol[DEVICES], devs[DEVICES];
-  char *labels[DEVICES] = SOUND_DEVICE_LABELS, *devmixer = NULL, *lang;
+  char *labels[DEVICES] = SOUND_DEVICE_LABELS, *devmixer = DEVMIXER, *lang;
   unsigned long devmask;
 
   /* piszemy po polsku? locale ss± (SEGFAULT fix by maxiu) */
   lang = getenv("LANG");
-  pl = (!strncasecmp(lang ? lang : "", "pl", 2)) ? 1 : 0;
+  pl = (!strncasecmp(lang, "pl", 2)) ? 1 : 0;
   
   /* sprawd¼ parametry */
-  while((optc=getopt_long(argc, argv, "hvd:mb", longopts, (int*) 0)) != EOF) {
-    switch(optc) {
+  while ((optc = getopt_long(argc, argv, "hvd:mb", longopts, NULL)) != EOF) {
+    switch (optc) {
       case 'd':
         devmixer = strdup(optarg);
 	break;
@@ -162,144 +90,141 @@ int main(int argc, char **argv) {
         mini = 0;
 	break;
       case 'v':
-        printf(VERSION ", (c) 1998, 1998 by wojtek kaniewski (wojtekka@dione.ids.pl)\n");
+        printf(VERSION ", " COPYRITE "\n");
         exit(0);
       default:
         usage(argv[0]);
     }
   }
 
-  dump_console();
-
   /* inicjalizacja biblioteki slang */
   SLtt_get_terminfo();
-  if(SLang_init_tty(3, 0, 0) == -1) merror("slang: SLang_init_tty()");
-  if(SLkp_init() == -1) merror("slang: SLkp_init()");
+  if ((SLang_init_tty(3, 0, 0) == -1) || (SLkp_init() == -1))
+    merror(pl ? "B³±d inicjalizacji terminala" : "Terminal initialization error");
 
   /* inicjalizacja miksera */
-  if((mixfd=open(devmixer ? devmixer : DEVMIXER, O_RDWR)) == -1) {
-    snprintf(pftmp, 255, pl ? "Nie mo¿na otworzyæ %s" : "Can't open %s",
-      devmixer ? devmixer : DEVMIXER);
-    merror(pftmp);
-  }
+  if ((mixfd = open(devmixer, O_RDWR)) == -1)
+    merror(pl ? "Nie mo¿na otworzyæ %s" : "Can't open %s", devmixer);
   if(ioctl(mixfd, SOUND_MIXER_READ_DEVMASK, &devmask) == -1 || !devmask)
     merror("ioctl: SOUND_MIXER_READ_DEVMASK");
   if(ioctl(mixfd, SOUND_MIXER_INFO, &minfo) == -1)
     merror("ioctl: SOUND_MIXER_INFO");
 
   /* wizytówka */
-  if(!mini) slprintf("%s (%s)\r\n", minfo.name, VERSION);
+  if (!mini) slprintf("%s /%s/\r\n", VERSION, minfo.name);
   
   /* ustaw reakcjê na sygna³y */
   signal(SIGTERM, finish);
-  signal(SIGINT, finish);
 
   /* odczytanie aktualnych ustawien miksera */
-  for(x=0; x<DEVICES; x++) {
-    if(!(devmask & (1 << x))) continue;
-    devs[ile]=x;
-    if(ioctl(mixfd, MIXER_READ(x), &oldvol[ile]) == -1)
+  for (x = 0; x < DEVICES; x++) {
+    if (!(devmask & (1 << x))) continue;
+    devs[ile] = x;
+    if (ioctl(mixfd, MIXER_READ(x), &oldvol[ile]) == -1)
       merror("ioctl: MIXER_READ");
-    vol[ile]=((oldvol[ile] & 255)+(oldvol[ile] >> 8))/20;
-    if(vol[ile] > 10) vol[ile]=10;
-    if(vol[ile] < 0) vol[ile]=0;
-    if(!mini) slprintf("%s%s <-----------> %d%%  \r" RIGHT BOLD "#" NORMAL
-    LEFT, ile ? "\r\n" : "", labels[devs[ile]], vol[ile]*10, vol[ile]+7, 1);
+    vol[ile] = ((oldvol[ile] & 255) + (oldvol[ile] >> 8)) / 20;
+    if (vol[ile] > 10) vol[ile] = 10;
+    if (vol[ile] < 0) vol[ile] = 0;
+    if (!mini) slprintf("%s%s <-----------> %d%%\r%s%s#%s%s", ile ? "\r\n" : "", labels[devs[ile]], vol[ile] * 10, right(vol[ile] + 7), bold(), normal(), left(1));
     ile++;
   }
-  if (!mini) slprintf(UP, ile-1);
+  if (!mini) slprintf("%s", up(ile - 1));
   
-  /* g³ówna pêtla */
-  do {
+  while (!finito) {
     /* poka¿ aktualne ustawienie miksera */
-    slprintf("\r%s <-----------> %d%%  \r" RIGHT BOLD "#" NORMAL LEFT,
-      labels[devs[dev]], vol[dev]*10, vol[dev]+7, 1);
+    slprintf("\r%s <-----------> %d%%  \r%s%s#%s%s",
+      labels[devs[dev]], vol[dev] * 10, right(vol[dev] + 7), bold(), normal(), left(1));
 
     /* jaki¶ klawisz? rozpatrzmy podanie... */
-    ch=SLkp_getkey();
-    switch(ch) {
+    ch = SLkp_getkey();
+    switch (ch) {
       case SL_KEY_UP:
-        if(dev==0) break;
+        if (!dev) break;
 	dev--;
-	if (!mini) slprintf(UP, 1);
+	if (!mini) slprintf("%s", up(1));
 	break;
       case SL_KEY_DOWN:
-        if(dev==ile-1) break;
+        if (dev == (ile - 1)) break;
         dev++;
-	if (!mini) slprintf(DOWN, 1);
+	if (!mini) slprintf("%s", down(1));
 	break;
       case '[': /* min */
-        vol[dev]=0;
-	update=1;
+        vol[dev] = 0;
+	update = 1;
 	break;
       case SL_KEY_LEFT: case '-': case ',': case '<':
-	if(vol[dev]>0) vol[dev]--;
-	update=1;
+	if (vol[dev]) vol[dev]--;
+	update = 1;
 	break;
       case ']': /* max */
-        vol[dev]=10;
-	update=1;
+        vol[dev] = 10;
+	update = 1;
 	break;
       case SL_KEY_RIGHT: case '+': case '.': case '>':
-        if(vol[dev]<10) vol[dev]++;
-	update=1;
+        if (vol[dev] < 10) vol[dev]++;
+	update = 1;
 	break;
       /* zakoñcz i zachowaj */
       case 13:
-	finito=1;
+	finito = 1;
         break;
       /* i tak nie dzia³a :) */
       case SL_KEY_ERR:
-        for(x=0; x<ile; x++) ioctl(mixfd, MIXER_WRITE(devs[x]), &oldvol[x]);
-	finito=1;
-	update=0;
+        for (x = 0; x < ile; x++)
+	  ioctl(mixfd, MIXER_WRITE(devs[x]), &oldvol[x]);
+	finito = 1;
+	update = 0;
 	break;
       /* jaki¶ klawisz, który nam nie pasuje */
       default:
         SLtt_beep();
     }
     /* czy musimy zaktualizowaæ ustawienia miksera? */
-    if(update) {
-      for(x=0; x<ile; x++) {
-	tmp=vol[x]*10+((vol[x]*10) << 8);
-        if(ioctl(mixfd, MIXER_WRITE(devs[x]), &tmp) == -1)
-	  merror("ioctl: SOUND_MIXER_WRITE_VOLUME");
-      }
-      update=0;
+    if (!update)
+      continue;
+    for (x = 0; x < ile; x++) {
+      tmp = vol[x] * 10 + ((vol[x] * 10) << 8);
+      if (ioctl(mixfd, MIXER_WRITE(devs[x]), &tmp) == -1)
+        merror("ioctl: SOUND_MIXER_WRITE_VOLUME");
     }
-  } while(!finito);
+    update = 0;
+  }
 
   /* koñczymy zabawê */
   finish();
-  return -1;
+  return 0;  
 }
 
 /* zamyka wszystko */
 void finish() 
 {
   close(mixfd);
-  if(mini) {
+  if (mini) {
     slprintf("\r");
     SLtt_del_eol();
-    slprintf("%s (%s)\r\n", minfo.name, VERSION);
+    slprintf("%s /%s/\r\n", minfo.name, VERSION);
   } else {
-    slprintf(DOWN "\r\n", ile-dev-1);
+    slprintf("%s\r\n", down(ile - dev - 1));
     SLtt_del_eol();
   }
   SLang_reset_tty();
-  restore_console();
   exit(1);
 }
 
 /* wywala komunikat o b³êdzie i sprz±ta po sobie */
-void merror(char *msg) 
+void merror(char *format, ...)
 {
-  close(mixfd);
+  char buf[256];
+  va_list va;
+  
+  va_start(va, format);
+  vsnprintf(buf, 255, format, va);
   fprintf(stderr, "\r");
   SLtt_del_eol();
-  fprintf(stderr, "%s: %s\r\n", pl ? "B£¡D" : "ERROR", msg);
+  fprintf(stderr, "%s: %s\r\n", pl ? "B£¡D" : "ERROR", buf);
+
   SLang_reset_tty();
-  restore_console();
+  close(mixfd);
   exit(1);
 }
 
@@ -322,4 +247,16 @@ Usage: %s [OPTIONS]\n\
       --help           prints list of avaiable options\n\
 ", argv0);
   exit(0);
+}
+
+void slprintf(char *format, ...)
+{
+  char buf[256];
+  va_list va;
+
+  va_start(va, format);
+  vsnprintf(buf, 256, format, va);
+  va_end(va);
+  SLtt_write_string(buf);
+  SLtt_flush_output();
 }
