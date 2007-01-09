@@ -1,0 +1,58 @@
+// mix, wersja 0.2
+// (c) 1998 wojtek kaniewski <wojtekka@logonet.com.pl>
+
+wstêp
+  niniejszy program s³u¿y do prostej i bezbolesnej zmiany g³o¶no¶ci d¼wiêków
+  wydobywaj±cych siê z karty dzwiêkowej. po co w ogóle taki program? dlatego,
+  ¿e nie znalaz³em programu miksera, który mi siê podoba³ :)
+
+wymagania
+  - linux 2.x ze sterownikiem karty d¼wiêkowej wkompilowanym w j±dro systemu
+    lub w postaci modu³u,
+  - biblioteka slang,
+  - odpowiednie pliki nag³ówkowe,
+  - kompilator jêzyka C.
+
+kompilacja i instalacja
+  aby poprawnie skompilowaæ program nale¿y uruchomiæ skrypt ./configure,
+  który sprawdzi, czy system jest w stanie sprostaæ kompilacji programu :)
+  stworzy on równie¿ pliki niezbêdne do dalszych dzia³añ.
+
+  nastêpnie nale¿y wpisaæ polecenie ,,make'', które uruchomi kompilator
+  z odpowiednimi opcjami. po poprawnej kompilacji (tzn. je¶li nie pojawi³y
+  siê komunikaty o b³êdzie), aby zainstalowaæ program w systemie, nale¿y
+  wydaæ polecenie ,,make install'', które skopiuje program i instrukcjê
+  obs³ugi w odpowienie miejsce.
+
+obs³uga programu
+  jest bajecznie prosta. po uruchomieniu programu pokazuje siê ma³y suwak
+  z zaznaczon± aktualn± g³o¶no¶ci±. mo¿esz zmieniaæ jego po³o¿enie za pomoc±
+  kursorów lub par klawiszy '+' i '-' lub '<' i '>'. uzyskaæ ca³kowite
+  wyciszenie nale¿y wcisn±æ klawisz '[', a maksymaln± g³o¶no¶æ mo¿emy
+  uzyskaæ wciskaj±c klawisz ']'. wciskaj±c kursory w górê i w dó³ mo¿na
+  poruszaæ siê miêdzy ró¿nymi ustawieniami karty d¼wiêkowej, jak g³o¶no¶æ
+  syntezatora midi, wej¶cia liniowego czy odtwarzacza CD. by zatwierdziæ
+  zmiany i zakoñczyæ program nale¿y wcisn±æ klawisz ENTER.
+
+kod ¼ród³owy
+  program jest wynikiem godzinnej pracy z edytorem, ¼ród³em programu
+  aumix oraz zawarto¶ci± katalogów /usr/doc i /usr/include. bardzo mo¿liwe
+  jest, ¿e co¶ nie wygl±da tak jak powinno, lecz program dzia³a bez zarzutu
+  na kilku maszynach i jest zbyt prosty, by móg³ staæ siê kopalni± b³êdów.
+
+znane b³êdy i niedogodno¶ci
+  - nie mo¿na wyj¶æ z programu bez zachowania ustawieñ g³o¶no¶ci,
+  - na kartach z nieliniow± regulacj± g³o¶no¶ci (np. gravis ultrsound)
+    regulacja jest faktycznie nieliniowa ;)
+  - ma³a skala regulacji nie pozwala na p³ynn± regulacjê.
+
+licencja
+  program jest rozprowadzany na zasadach okre¶lonych w Licencji GNU,
+  do³±czonej do programu w pliku COPYING.
+
+kontakt z autorem
+  bêdê wdziêczny je¶li przy¶lesz na adres <wojtekka@logonet.com.pl>
+  komentarze na temat programu lub informacje o znalezionych b³êdach.
+
+copyright
+  (c) 1998 wojtek kaniewski <wojtekka@logonet.com.pl>
