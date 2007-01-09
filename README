@@ -1,10 +1,10 @@
-// mix, wersja 0.2
-// (c) 1998 wojtek kaniewski <wojtekka@logonet.com.pl>
+// mix, wersja 0.3
+// (c) 1998, 1999 wojtek kaniewski <wojtekka@dione.ids.pl>
 
 wstêp
   niniejszy program s³u¿y do prostej i bezbolesnej zmiany g³o¶no¶ci d¼wiêków
-  wydobywaj±cych siê z karty dzwiêkowej. po co w ogóle taki program? dlatego,
-  ¿e nie znalaz³em programu miksera, który mi siê podoba³ :)
+  wydobywaj±cych siê z karty dzwiêkowej. po co w ogole napisa³em taki program?
+  dlatego, ¿e nie znalaz³em miksera, który mi siê podoba³ :)
 
 wymagania
   - linux 2.x ze sterownikiem karty d¼wiêkowej wkompilowanym w j±dro systemu
@@ -42,17 +42,17 @@ kod ¼ród³owy
 
 znane b³êdy i niedogodno¶ci
   - nie mo¿na wyj¶æ z programu bez zachowania ustawieñ g³o¶no¶ci,
-  - na kartach z nieliniow± regulacj± g³o¶no¶ci (np. gravis ultrsound)
+  - na kartach z nieliniow± regulacj± g³o¶no¶ci (np. gravis ultrasound)
     regulacja jest faktycznie nieliniowa ;)
-  - ma³a skala regulacji nie pozwala na p³ynn± regulacjê.
-
+  - ma³a skala regulacji nie pozwala na p³ynne "dostrajanie".
+  
 licencja
   program jest rozprowadzany na zasadach okre¶lonych w Licencji GNU,
   do³±czonej do programu w pliku COPYING.
 
 kontakt z autorem
-  bêdê wdziêczny je¶li przy¶lesz na adres <wojtekka@logonet.com.pl>
+  bêdê wdziêczny je¶li przy¶lesz na adres <wojtekka@dione.ids.pl>
   komentarze na temat programu lub informacje o znalezionych b³êdach.
 
 copyright
-  (c) 1998 wojtek kaniewski <wojtekka@logonet.com.pl>
+  (c) 1998, 1999 wojtek kaniewski <wojtekka@dione.ids.pl>

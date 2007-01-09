@@ -1,6 +1,6 @@
 /*
-  mix, wersja 0.2
-  (c) 1998 wojtek kaniewski <wojtekka@logonet.com.pl>
+  mix, wersja 0.3
+  (c) 1998 wojtek kaniewski <wojtekka@dione.ids.pl>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,36 +23,25 @@
 #include <unistd.h>
 #include "slang.h"
 
-#ifdef linux
-#	include <sys/ioctl.h>
-#	include <sys/types.h>
-#	include <sys/soundcard.h>
-#	define MIXER
-#endif
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/soundcard.h>
 
-#ifdef __FreeBSD__
-#	include "sys/ioctl.h"
-#	include <sys/types.h>
-#	include "machine/soundcard.h"
-#	define MIXER
-#endif
-
-#ifndef MIXER
-** sorry, your machine does not support OSS mixer
-#endif
-
-#define VERSION "mix-0.2"
+#define DEVMIXER "/dev/mixer"
+#define VERSION "mix-0.3"
+#define DEVICES SOUND_MIXER_NRDEVICES
 
 /* deklarujemy co trzeba */
 void merror(char *msg);
-mixer_info minfo;
-char *devices[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_LABELS;
-int mixfd, dev = -1, oldvol[SOUND_MIXER_NRDEVICES], vol[SOUND_MIXER_NRDEVICES];
-unsigned long devmask;
+int mixfd;
 
 /* i wziuuum... do dzie³a :) */
 void main(int argc, char **argv) {
-  int x, tmp, ch, update = 0, finito = 0;
+  int x, ile = 0, dev = 0, tmp, ch, update = 0, finito = 0;
+  int oldvol[DEVICES], vol[DEVICES], devs[DEVICES];
+  char *labels[DEVICES] = SOUND_DEVICE_LABELS;
+  unsigned long devmask;
+  mixer_info minfo;
   char ctmp[256];
 
   /* inicjalizacja biblioteki slang */
@@ -61,32 +50,44 @@ void main(int argc, char **argv) {
   if(SLkp_init() == -1) merror("SLkp_init()");
 
   /* inicjalizacja miksera */
-  if((mixfd=open("/dev/mixer", O_RDWR)) < 0)
-    merror("Nie mo¿na otworzyæ /dev/mixer");
+  if((mixfd=open(DEVMIXER, O_RDWR)) < 0)
+    merror("Nie mo¿na otworzyæ " DEVMIXER);
   if(ioctl(mixfd, SOUND_MIXER_READ_DEVMASK, &devmask) == -1)
     merror("SOUND_MIXER_READ_DEVMASK");
   if(!devmask)
-    merror("Mikser nie pozwala na regulacjê jakichkolwiek ustawieñ");
+    merror("Mikser nie zezwala na regulacjê jakichkolwiek ustawieñ");
   if(ioctl(mixfd, SOUND_MIXER_INFO, &minfo) == -1)
     merror("SOUND_MIXER_INFO");
 
+  /* wizytówka */
+  printf(VERSION " (urz±dzenie: %s)\r\n", minfo.name);
+  
   /* odczytanie aktualnych ustawien miksera */
-  while(!(devmask & (1 << ++dev)));
   for(x=0; x<SOUND_MIXER_NRDEVICES; x++) {
     if(!(devmask & (1 << x))) continue;
-    if(ioctl(mixfd, MIXER_READ(x), &oldvol[x]) == -1) merror("MIXER_READ");
-    vol[x]=((oldvol[x] & 255)+(oldvol[x] >> 8))/20;
-    if(vol[x] > 10) vol[x]=10;
-    if(vol[x] < 0) vol[x]=0;
+    devs[ile]=x;
+    if(ioctl(mixfd, MIXER_READ(x), &oldvol[ile]) == -1) merror("MIXER_READ");
+    vol[ile]=((oldvol[ile] & 255)+(oldvol[ile] >> 8))/20;
+    if(vol[ile] > 10) vol[ile]=10;
+    if(vol[ile] < 0) vol[ile]=0;
+    snprintf(ctmp, 255, "%s%s <-----------> %d%%  \r\033[%dC", ile ? "\r\n" : "", labels[devs[ile]], vol[ile]*10, vol[ile]+7);
+    SLtt_write_string(ctmp);
+    SLtt_bold_video();
+    SLtt_write_string("#\033[D");
+    SLtt_normal_video();
+    SLtt_flush_output();
+    ile++;
   }
+  snprintf(ctmp, 255, "\033[%dA", ile-1);
+  SLtt_write_string(ctmp);
   
   /* infinite loop? naaah... ;) */
   do {
     /* poka¿ aktualne ustawienie miksera */
-    sprintf(ctmp, "\r%s <-----------> %d%%  \r\x1B[%dC", devices[dev], vol[dev]*10, vol[dev]+7);
+    snprintf(ctmp, 255, "\r%s <-----------> %d%%  \r\033[%dC", labels[devs[dev]], vol[dev]*10, vol[dev]+7);
     SLtt_write_string(ctmp);
     SLtt_bold_video();
-    SLtt_write_string("#\x1B[D");
+    SLtt_write_string("#\033[D");
     SLtt_normal_video();
     SLtt_flush_output();
 
@@ -96,13 +97,15 @@ void main(int argc, char **argv) {
       /* poprzednia wartosc */
       case SL_KEY_UP:
         if(dev==0) break;
-	while(!(devmask & (1 << --dev)));
+	dev--;
+	SLtt_write_string("\033[A");
+	SLtt_flush_output();
 	break;
       case SL_KEY_DOWN:
-        if(dev==SOUND_MIXER_NRDEVICES-1) break;
-	x=dev;
-	while(!((devmask & (1 << ++dev)) || (dev == SOUND_MIXER_NRDEVICES)));
-	if(dev == SOUND_MIXER_NRDEVICES) dev=x;
+        if(dev==ile-1) break;
+        dev++;
+	SLtt_write_string("\033[B");
+	SLtt_flush_output();
 	break;
       /* minimalna g³o¶no¶æ */
       case '[':
@@ -135,10 +138,9 @@ void main(int argc, char **argv) {
     }
     /* czy musimy zaktualizowaæ ustawienia miksera? */
     if(update) {
-      for(x=0; x < SOUND_MIXER_NRDEVICES; x++) {
-        if(!(devmask & (1 << x))) continue;
+      for(x=0; x<ile; x++) {
 	tmp=vol[x]*10+((vol[x]*10) << 8);
-        if(ioctl(mixfd, MIXER_WRITE(x), &tmp) == -1) merror("SOUND_MIXER_WRITE_VOLUME");
+        if(ioctl(mixfd, MIXER_WRITE(devs[x]), &tmp) == -1) merror("SOUND_MIXER_WRITE_VOLUME");
       }
       update=0;
     }
@@ -146,9 +148,8 @@ void main(int argc, char **argv) {
 
   /* koñczymy zabawê */
   close(mixfd);
-  printf("\r");
+  printf("\033[%dB\r\n", ile-dev);
   SLtt_del_eol();
-  printf(VERSION " (%s)\r\n", minfo.name);
   SLang_reset_tty();
 }
 
