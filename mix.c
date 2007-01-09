@@ -26,6 +26,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <signal.h>
+#include <ctype.h>
 #include "slang.h"
 
 #include <sys/ioctl.h>
@@ -76,8 +77,69 @@ static struct option const longopts[] = {
   { 0, 0, 0, 0 }
 };
 
+struct scrn {
+	char lines, cols, x, y;
+};
+
+struct scrn *console_save = NULL;
+char *vcs_path = NULL;
+
+void dump_console()
+{
+	char *tty = ttyname(0);
+	int fd;
+
+	if (!tty)
+		return;
+	if (strcmp(tty, "/dev/tty") || !isdigit(tty[8]))
+		return;
+	vcs_path = strdup(tty);
+	vcs_path[5] = 'v';
+	vcs_path[6] = 'c';
+	vcs_path[7] = 's';
+
+	if (!(console_save = malloc(sizeof(struct scrn)))) {
+		free(vcs_path);
+		return;
+	}
+	
+	if ((fd = open(vcs_path, O_RDWR)) == -1) {
+		free(console_save);
+		free(vcs_path);
+		console_save = NULL;
+		return;
+	}
+
+	read(fd, console_save, sizeof(struct scrn));
+
+	if (!(console_save = realloc(console_save, sizeof(struct scrn) + 2 * console_save->lines * console_save->cols))) {
+		close(fd);
+		free(vcs_path);
+		return;
+	}
+
+	read(fd, console_save + sizeof(struct scrn), 2 * console_save->lines * console_save->cols);
+	close(fd);
+}
+
+void restore_console()
+{
+	int fd;
+
+	if (!console_save || !vcs_path)
+		return;
+
+	if ((fd = open(vcs_path, O_RDWR)) == -1)
+		return;
+
+	write(fd, console_save,  sizeof(struct scrn) + 2 * console_save->lines * console_save->cols);
+	close(fd);
+	free(console_save);
+	free(vcs_path);
+}
+
 /* i wziuuum... do dzie³a :) */
-void main(int argc, char **argv) {
+int main(int argc, char **argv) {
   int x, tmp, ch, update = 0, finito = 0, optc;
   int oldvol[DEVICES], vol[DEVICES], devs[DEVICES];
   char *labels[DEVICES] = SOUND_DEVICE_LABELS, *devmixer = NULL, *lang;
@@ -106,6 +168,8 @@ void main(int argc, char **argv) {
         usage(argv[0]);
     }
   }
+
+  dump_console();
 
   /* inicjalizacja biblioteki slang */
   SLtt_get_terminfo();
@@ -207,6 +271,7 @@ void main(int argc, char **argv) {
 
   /* koñczymy zabawê */
   finish();
+  return -1;
 }
 
 /* zamyka wszystko */
@@ -222,6 +287,7 @@ void finish()
     SLtt_del_eol();
   }
   SLang_reset_tty();
+  restore_console();
   exit(1);
 }
 
@@ -233,6 +299,7 @@ void merror(char *msg)
   SLtt_del_eol();
   fprintf(stderr, "%s: %s\r\n", pl ? "B£¡D" : "ERROR", msg);
   SLang_reset_tty();
+  restore_console();
   exit(1);
 }
 
