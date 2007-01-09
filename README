@@ -1,4 +1,4 @@
-// mix, wersja 0.4
+// mix, wersja 0.5
 // (c) 1998, 1999 wojtek kaniewski <wojtekka@dione.ids.pl>
 
 wstêp
@@ -20,15 +20,9 @@ kompilacja i instalacja
   miejsce.
 
 obs³uga programu
-  jest bajecznie prosta. po uruchomieniu programu pokazuje siê ma³y suwak
-  z zaznaczon± aktualn± g³o¶no¶ci±. mo¿esz zmieniaæ jego po³o¿enie za pomoc±
-  kursorów lub par klawiszy '+' i '-' lub '<' i '>'. uzyskaæ ca³kowite
-  wyciszenie nale¿y wcisn±æ klawisz '[', a maksymaln± g³o¶no¶æ mo¿emy
-  uzyskaæ wciskaj±c klawisz ']'. wciskaj±c kursory w górê i w dó³ mo¿na
-  poruszaæ siê miêdzy ró¿nymi ustawieniami karty d¼wiêkowej, jak g³o¶no¶æ
-  syntezatora midi, wej¶cia liniowego czy odtwarzacza CD. by zatwierdziæ
-  zmiany i zakoñczyæ program nale¿y wcisn±æ klawisz ENTER. by wyj¶æ z programu
-  nie zachowuj±c zmian nale¿y dwukrotnie wcisn±æ klawisz ESC.
+  jest bajecznie prosta. uruchom, zobacz. pobaw siê kursorami, plusem,
+  minusem... '[' i ']' ustawiaj± minimaln± lub maksymaln± g³o¶no¶æ. aby
+  wyj¶æ wci¶nij ENTER.
 
 parametry programu
   -d, --device=URZ¡DZENIE
@@ -37,6 +31,8 @@ parametry programu
   -m, --mini
       uruchamia program w trybie jednolinijkowym (tak jak wersja wcze¶niejsze
       ni¿ 0.3).
+  -b, --big
+      uruchamia program w normalnym trybie.
   --version
       pokazuje wersjê programu.
   --help

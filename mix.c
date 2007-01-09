@@ -1,6 +1,8 @@
 /*
-  mix, wersja 0.4
+  mix, wersja 0.51
   (c) 1998, 1999 wojtek kaniewski <wojtekka@dione.ids.pl>
+  
+  fixy: marcin kamiñski <maxiu@px.pl>
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,8 +33,20 @@
 #include <sys/soundcard.h>
 
 #define DEVMIXER "/dev/mixer"
-#define VERSION "mix-0.4"
 #define DEVICES SOUND_MIXER_NRDEVICES
+
+#ifndef MINI
+#  define VERSION "mix-0.51"
+#else
+#  define VERSION "mix-0.51-mini"
+#endif
+
+#define UP "\033[%dA"
+#define DOWN "\033[%dB"
+#define RIGHT "\033[%dC"
+#define LEFT "\033[%dD"
+#define NORMAL "\033[0m"
+#define BOLD "\033[1m"
 
 #define slprintf(x...) { snprintf(pftmp, 255, x); \
   SLtt_write_string(pftmp); SLtt_flush_output(); }
@@ -42,14 +56,23 @@ void merror(char *msg);
 void usage(char *argv0);
 void finish();
 char pftmp[256];
-int mixfd, opt_help = 0, opt_version = 0, mini = 0, ile = 0, dev = 0, pl;
+int mixfd, ile = 0, dev = 0, pl;
 mixer_info minfo;
+#ifndef MINI
+int mini = 0;
+#else
+int mini = 1;
+#endif
 
 static struct option const longopts[] = {
-  { "help", no_argument, &opt_help, 1 },
-  { "version", no_argument, &opt_version, 1 },
+  { "help", no_argument, 0, 'h' },
+  { "version", no_argument, 0, 'v' },
   { "device", required_argument, 0, 'd' },
+#ifndef MINI
   { "mini", no_argument, 0, 'm' },
+#else
+  { "big", no_argument, 0, 'b' },
+#endif
   { 0, 0, 0, 0 }
 };
 
@@ -57,14 +80,15 @@ static struct option const longopts[] = {
 void main(int argc, char **argv) {
   int x, tmp, ch, update = 0, finito = 0, optc;
   int oldvol[DEVICES], vol[DEVICES], devs[DEVICES];
-  char *labels[DEVICES] = SOUND_DEVICE_LABELS, *devmixer = NULL;
+  char *labels[DEVICES] = SOUND_DEVICE_LABELS, *devmixer = NULL, *lang;
   unsigned long devmask;
 
-  /* piszemy po polsku? */
-  pl = !strncasecmp(getenv("LANG"), "pl", 2);
+  /* piszemy po polsku? locale ss± (SEGFAULT fix by maxiu) */
+  lang = getenv("LANG");
+  pl = (!strncasecmp(lang ? lang : "", "pl", 2)) ? 1 : 0;
   
   /* sprawd¼ parametry */
-  while((optc=getopt_long(argc, argv, "hvd:m", longopts, (int*) 0)) != EOF) {
+  while((optc=getopt_long(argc, argv, "hvd:mb", longopts, (int*) 0)) != EOF) {
     switch(optc) {
       case 'd':
         devmixer = strdup(optarg);
@@ -72,16 +96,15 @@ void main(int argc, char **argv) {
       case 'm':
         mini = 1;
 	break;
+      case 'b':
+        mini = 0;
+	break;
+      case 'v':
+        printf(VERSION ", (c) 1998, 1998 by wojtek kaniewski (wojtekka@dione.ids.pl)\n");
+        exit(0);
       default:
         usage(argv[0]);
     }
-  }
-  if(opt_version) {
-    printf(VERSION ", (c) 1998, 1998 by wojtek kaniewski (wojtekka@dione.ids.pl)\n");
-    exit(0);
-  }
-  if(opt_help) {
-    usage(argv[0]);
   }
 
   /* inicjalizacja biblioteki slang */
@@ -116,48 +139,43 @@ void main(int argc, char **argv) {
     vol[ile]=((oldvol[ile] & 255)+(oldvol[ile] >> 8))/20;
     if(vol[ile] > 10) vol[ile]=10;
     if(vol[ile] < 0) vol[ile]=0;
-    if(!mini) slprintf("%s%s <-----------> %d%%  \r\033[%dC\033[1m#\033[0m"
-    "\033[D", ile ? "\r\n" : "", labels[devs[ile]], vol[ile]*10, vol[ile]+7);
+    if(!mini) slprintf("%s%s <-----------> %d%%  \r" RIGHT BOLD "#" NORMAL
+    LEFT, ile ? "\r\n" : "", labels[devs[ile]], vol[ile]*10, vol[ile]+7, 1);
     ile++;
   }
-  if (!mini) slprintf("\033[%dA", ile-1);
+  if (!mini) slprintf(UP, ile-1);
   
   /* g³ówna pêtla */
   do {
     /* poka¿ aktualne ustawienie miksera */
-    slprintf("\r%s <-----------> %d%%  \r\033[%dC\033[1m#\033[0m\033[D",
-      labels[devs[dev]], vol[dev]*10, vol[dev]+7);
+    slprintf("\r%s <-----------> %d%%  \r" RIGHT BOLD "#" NORMAL LEFT,
+      labels[devs[dev]], vol[dev]*10, vol[dev]+7, 1);
 
     /* jaki¶ klawisz? rozpatrzmy podanie... */
     ch=SLkp_getkey();
     switch(ch) {
-      /* poprzednia wartosc */
       case SL_KEY_UP:
         if(dev==0) break;
 	dev--;
-	if (!mini) slprintf("\033[A");
+	if (!mini) slprintf(UP, 1);
 	break;
       case SL_KEY_DOWN:
         if(dev==ile-1) break;
         dev++;
-	if (!mini) slprintf("\033[B");
+	if (!mini) slprintf(DOWN, 1);
 	break;
-      /* minimalna g³o¶no¶æ */
-      case '[':
+      case '[': /* min */
         vol[dev]=0;
 	update=1;
 	break;
-      /* zmniejszenie g³o¶no¶ci */
       case SL_KEY_LEFT: case '-': case ',': case '<':
 	if(vol[dev]>0) vol[dev]--;
 	update=1;
 	break;
-      /* maksymalna g³o¶no¶æ */
-      case ']':
+      case ']': /* max */
         vol[dev]=10;
 	update=1;
 	break;
-      /* zwiêkszenie g³o¶no¶ci */
       case SL_KEY_RIGHT: case '+': case '.': case '>':
         if(vol[dev]<10) vol[dev]++;
 	update=1;
@@ -166,7 +184,7 @@ void main(int argc, char **argv) {
       case 13:
 	finito=1;
         break;
-      /* SLang jest gupi i nie ma klawisza esc, wiec wykorzystamy to... */
+      /* i tak nie dzia³a :) */
       case SL_KEY_ERR:
         for(x=0; x<ile; x++) ioctl(mixfd, MIXER_WRITE(devs[x]), &oldvol[x]);
 	finito=1;
@@ -192,14 +210,15 @@ void main(int argc, char **argv) {
 }
 
 /* zamyka wszystko */
-void finish() {
+void finish() 
+{
   close(mixfd);
   if(mini) {
     slprintf("\r");
     SLtt_del_eol();
     slprintf("%s (%s)\r\n", minfo.name, VERSION);
   } else {
-    slprintf("\033[%dB\r\n", ile-dev);
+    slprintf(DOWN "\r\n", ile-dev-1);
     SLtt_del_eol();
   }
   SLang_reset_tty();
@@ -207,7 +226,8 @@ void finish() {
 }
 
 /* wywala komunikat o b³êdzie i sprz±ta po sobie */
-void merror(char *msg) {
+void merror(char *msg) 
+{
   close(mixfd);
   fprintf(stderr, "\r");
   SLtt_del_eol();
@@ -217,17 +237,20 @@ void merror(char *msg) {
 }
 
 /* informacje o sposobie u¿ycia */
-void usage(char *argv0) {
+void usage(char *argv0) 
+{
   if(pl) printf("\
 U¿ycie: %s [OPCJE]\n\
   -d, --device=URZ¡DZENIE  okre¶la u¿ywane urz±dzenie miksera\n\
-  -m, --mini               uruchamia program w trybie jednolinijkowym\n\
+  -m, --mini               uruchamia program w trybie jednolinijkowym...\n\
+  -b, --big                ...lub normalnym (przydane w wersji 'mini')\n\
       --version            pokazuje wersjê programu\n\
       --help               wy¶wietla listê dostêpnych opcji\n\
 ", argv0); else printf("\
 Usage: %s [OPTIONS]\n\
-  -d, --device=DEVICE  specifies mixer device that should be used\n\
-  -m, --mini           runs program in one-line mode\n\
+  -d, --device=DEVICE  tells which mixer device should be used\n\
+  -m, --mini           runs program in one-line mode...\n\
+  -b, --big            ...or in normal mode (useful for 'mini' version)\n\
       --version        shows program version\n\
       --help           prints list of avaiable options\n\
 ", argv0);
